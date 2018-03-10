@@ -65,6 +65,7 @@ void *deal_http(void *arg)
     dup2(msg->fd, STDIN_FILENO);
     dup2(msg->fd, STDOUT_FILENO);
 
+
     if (sscanf(msg->buf, "%[^ ] %[^ ] %[^ ]", method, path, protocol) != 3)
     {
         http_send_err(400, "Bad Request", "Can't parse request.");
@@ -89,6 +90,10 @@ void *deal_http(void *arg)
     {
         http_send_err(400, "Bad Request", "Bad filename.");
         goto end;
+    }
+    if(path[1]=='\0')
+    {
+        strcat(path,"index.html");
     }
     filesname = path + 1;
     if (stat(filesname, &s_buf) < 0)
