@@ -14,8 +14,8 @@
 #include "wrap.h"
 
 #define MAXLINE 1024
-#define SERV_PORT 8888
-#define SERV_IP "192.168.1.107"
+#define SERV_PORT 80
+#define SERV_IP "192.168.1.110"
 
 char head[MAXLINE];
 
@@ -58,13 +58,12 @@ void *deal_http(void *arg)
     char *filesname;
     char *dot;
     FILE *fp;
-    char ich;
+    int rc;
 
     msg = (pthread_msg_http *)arg;
 
     dup2(msg->fd, STDIN_FILENO);
     dup2(msg->fd, STDOUT_FILENO);
-
 
     if (sscanf(msg->buf, "%[^ ] %[^ ] %[^ ]", method, path, protocol) != 3)
     {
@@ -91,9 +90,9 @@ void *deal_http(void *arg)
         http_send_err(400, "Bad Request", "Bad filename.");
         goto end;
     }
-    if(path[1]=='\0')
+    if (path[1] == '\0')
     {
-        strcat(path,"index.html");
+        strcat(path, "html/index.html");
     }
     filesname = path + 1;
     if (stat(filesname, &s_buf) < 0)
@@ -102,7 +101,7 @@ void *deal_http(void *arg)
         goto end;
     }
 
-    fp = fopen(filesname, "r");
+    fp = fopen(filesname, "rb"); //以二进制打开文件，不然图片出错
     if (fp == NULL)
     {
         http_send_err(403, "Forbidden", "File is protected.");
@@ -122,19 +121,19 @@ void *deal_http(void *arg)
     }
     else if (strcmp(dot, ".jpg") == 0)
     {
-        type = "image/jpeg";
+        type = "image/jpeg;";
     }
     else if (strcmp(dot, ".gif") == 0)
     {
-        type = "image/gif";
+        type = "image/gif;";
     }
     else if (strcmp(dot, ".png") == 0)
     {
-        type = "image/png";
+        type = "image/png;";
     }
     else if (strcmp(dot, ".mp3") == 0)
     {
-        type = "audio/mpeg";
+        type = "audio/mpeg; charset=UTF-8";
     }
     else
     {
@@ -143,8 +142,12 @@ void *deal_http(void *arg)
 
     http_send_headers(type, s_buf.st_size);
 
-    while ((ich = getc(fp)) != EOF)
-        putchar(ich);
+    memset(buf, -1, sizeof(buf));
+
+    while ((rc = fread(buf, sizeof(char), MAXLINE, fp)) != 0)//写入的时候一样的，用二进制写入
+    {
+        fwrite(buf, sizeof(char), MAXLINE, stdout);
+    }
 
     fflush(stdout);
 
@@ -170,7 +173,10 @@ int main(void)
     int ret;
     int log;
     int epfd;
+    int opt;
     pthread_msg_http msg;
+
+    opt = 1;
 
     fdin = dup(STDIN_FILENO);
     fdout = dup(STDOUT_FILENO);
@@ -180,6 +186,8 @@ int main(void)
     serv_ip = 0;
 
     lfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+    setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt));
 
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
