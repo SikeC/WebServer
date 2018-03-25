@@ -1,0 +1,9 @@
+request:method path version
+host 请求服务器地址
+User-Agent 发送请求的应用名称
+Connection 制定连接属性
+Accept-Chareset 编码格式
+Accept-Encoding 可以发送的数据压缩格式
+Accept-Language 发送的语言
+\r\n
+body
